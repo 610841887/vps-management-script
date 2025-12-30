@@ -544,10 +544,11 @@ show_menu() {
     echo -e "  ${GREEN}5.${PLAIN} Fail2Ban 防爆破保护 (SSH)"
     echo -e "  ${RED}6. 系统重装 (DD 脚本)${PLAIN}"
     echo -e "  ${GREEN}7.${PLAIN} 更新本脚本"
+    echo -e "  ${RED}8. 卸载本脚本${PLAIN}"
     echo -e "  ${GREEN}0.${PLAIN} 退出脚本"
     echo -e "${BLUE}=============================================${PLAIN}"
     
-    read -p "请输入选项 [0-7]: " num
+    read -p "请输入选项 [0-8]: " num
     case "$num" in
         1)
             xray_menu
@@ -570,11 +571,14 @@ show_menu() {
         7)
             update_script
             ;;
+        8)
+            uninstall_script
+            ;;
         0)
             exit 0
             ;;
         *)
-            echo -e "${RED}请输入正确的数字 [0-7]${PLAIN}"
+            echo -e "${RED}请输入正确的数字 [0-8]${PLAIN}"
             sleep 1
             show_menu
             ;;
@@ -799,6 +803,31 @@ install_base() {
 }
 
 
+
+# 卸载本脚本
+uninstall_script() {
+    clear
+    echo -e "${YELLOW}确定要卸载本脚本吗?${PLAIN}"
+    echo -e "${YELLOW}这不仅会删除 'vps' 快捷指令，还可以选择是否卸载已安装的 X-ray。${PLAIN}"
+    read -p "是否继续? [y/N]: " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        show_menu
+        return
+    fi
+    
+    # 询问是否卸载 X-ray
+    read -p "是否同时卸载 X-ray 服务? [y/N]: " uninstall_xray_flag
+    if [[ "$uninstall_xray_flag" == "y" || "$uninstall_xray_flag" == "Y" ]]; then
+        uninstall_xray
+    fi
+    
+    echo -e "${YELLOW}正在删除 'vps' 快捷指令...${PLAIN}"
+    rm -f /usr/local/bin/vps
+    
+    echo -e "${GREEN}脚本卸载完成。${PLAIN}"
+    echo -e "${GREEN}期待与您的再次相遇！${PLAIN}"
+    exit 0
+}
 
 # 入口
 check_root
