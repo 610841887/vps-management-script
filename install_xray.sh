@@ -601,6 +601,37 @@ show_log() {
     journalctl -u xray -f
 }
 
+# 脚本自我更新
+update_script() {
+    echo -e "${YELLOW}正在检查脚本更新...${PLAIN}"
+    local download_url="https://raw.githubusercontent.com/610841887/vps-management-script/main/install_xray.sh"
+    
+    # 备份当前脚本
+    cp "$0" "$0.bak"
+    
+    # 下载新脚本
+    wget -N --no-check-certificate "$download_url" -O "$0.new"
+    
+    if [[ $? -ne 0 ]]; then
+        echo -e "${RED}更新失败，无法连接到 GitHub。${PLAIN}"
+        rm -f "$0.new"
+        return
+    fi
+    
+    # 简单校验
+    if ! grep -q "show_menu" "$0.new"; then 
+        echo -e "${RED}更新失败，下载的文件似乎不完整。${PLAIN}"
+        rm -f "$0.new"
+        return
+    fi
+    
+    mv "$0.new" "$0"
+    chmod +x "$0"
+    echo -e "${GREEN}脚本更新成功，正在自动重启脚本...${PLAIN}"
+    sleep 2
+    exec "$0" "$@"
+}
+
 # 主菜单
 show_menu() {
     clear
@@ -615,13 +646,14 @@ show_menu() {
     echo -e "  ${GREEN}6.${PLAIN} 查看实时日志"
     echo -e "  ${GREEN}7.${PLAIN} 开启 TCP BBR (系统优化)"
     echo -e "  ${GREEN}8.${PLAIN} 防火墙管理 (UFW)"
-    echo -e "  ${RED}9. 卸载 X-ray${PLAIN}"
+    echo -e "  ${GREEN}9.${PLAIN} 更新本脚本"
+    echo -e "  ${RED}10. 卸载 X-ray${PLAIN}"
     echo -e "  ${GREEN}0.${PLAIN} 退出脚本"
     echo -e "${BLUE}=============================================${PLAIN}"
     
     check_status
     
-    read -p "请输入选项 [0-9]: " num
+    read -p "请输入选项 [0-10]: " num
     case "$num" in
         1)
             install_dependencies
@@ -665,13 +697,16 @@ show_menu() {
             firewall_menu
             ;;
         9)
+            update_script
+            ;;
+        10)
             uninstall_xray
             ;;
         0)
             exit 0
             ;;
         *)
-            echo -e "${RED}请输入正确的数字 [0-9]${PLAIN}"
+            echo -e "${RED}请输入正确的数字 [0-10]${PLAIN}"
             sleep 1
             show_menu
             ;;
