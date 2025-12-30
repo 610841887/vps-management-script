@@ -347,6 +347,77 @@ run_node_quality() {
     show_menu
 }
 
+# 安装配置 Fail2Ban
+install_fail2ban() {
+    echo -e "${YELLOW}正在检查并安装 Fail2Ban...${PLAIN}"
+    if [ -f /etc/debian_version ]; then
+        apt update -y
+        apt install -y fail2ban
+    elif [ -f /etc/redhat-release ]; then
+        yum install -y fail2ban
+        if ! command -v fail2ban-client &> /dev/null; then
+             yum install -y epel-release
+             yum install -y fail2ban
+        fi
+    else
+        echo -e "${RED}不支持的系统，无法自动安装 Fail2Ban。${PLAIN}"
+        read -p "按回车键返回菜单..."
+        show_menu
+        return
+    fi
+    
+    if ! command -v fail2ban-client &> /dev/null; then
+        echo -e "${RED}Fail2Ban 安装失败，请检查系统源。${PLAIN}"
+        read -p "按回车键返回菜单..."
+        show_menu
+        return
+    fi
+
+    echo -e "${YELLOW}正在配置 SSH 防爆破规则...${PLAIN}"
+    # 配置 SSH 防护
+    local ssh_log="/var/log/auth.log"
+    if [ -f /etc/redhat-release ]; then
+        ssh_log="/var/log/secure"
+    fi
+    
+    cat > /etc/fail2ban/jail.local <<EOF
+[DEFAULT]
+ignoreip = 127.0.0.1/8
+bantime = 86400
+findtime = 600
+maxretry = 5
+
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = ${ssh_log}
+backend = systemd
+EOF
+
+    # 如果系统没有 systemd backend 支持 (老旧系统)，回退到 auto
+    if ! systemctl status fail2ban &>/dev/null; then
+         # 尝试启动一次看看
+         systemctl start fail2ban
+    fi
+    
+    systemctl enable fail2ban
+    systemctl restart fail2ban
+    
+    echo -e "${GREEN}Fail2Ban 安装配置完成！${PLAIN}"
+    echo -e "${BLUE}当前状态:${PLAIN}"
+    if systemctl is-active --quiet fail2ban; then
+        echo -e "服务状态: ${GREEN}运行中${PLAIN}"
+        echo -e "SSHD 监控状态:"
+        fail2ban-client status sshd
+    else
+        echo -e "服务状态: ${RED}启动失败，请检查日志 (journalctl -u fail2ban)${PLAIN}"
+    fi
+    
+    read -p "按回车键返回菜单..."
+    show_menu
+}
+
 # X-ray 管理菜单
 xray_menu() {
     clear
@@ -429,11 +500,12 @@ show_menu() {
     echo -e "  ${GREEN}2.${PLAIN} VPS 性能优化 (TCP BBR/系统优化)"
     echo -e "  ${GREEN}3.${PLAIN} VPS 线路/性能测试 (NodeQuality)"
     echo -e "  ${GREEN}4.${PLAIN} 防火墙管理 (UFW)"
-    echo -e "  ${GREEN}5.${PLAIN} 更新本脚本"
+    echo -e "  ${GREEN}5.${PLAIN} Fail2Ban 防爆破保护 (SSH)"
+    echo -e "  ${GREEN}6.${PLAIN} 更新本脚本"
     echo -e "  ${GREEN}0.${PLAIN} 退出脚本"
     echo -e "${BLUE}=============================================${PLAIN}"
     
-    read -p "请输入选项 [0-5]: " num
+    read -p "请输入选项 [0-6]: " num
     case "$num" in
         1)
             xray_menu
@@ -448,13 +520,16 @@ show_menu() {
             firewall_menu
             ;;
         5)
+            install_fail2ban
+            ;;
+        6)
             update_script
             ;;
         0)
             exit 0
             ;;
         *)
-            echo -e "${RED}请输入正确的数字 [0-5]${PLAIN}"
+            echo -e "${RED}请输入正确的数字 [0-6]${PLAIN}"
             sleep 1
             show_menu
             ;;
