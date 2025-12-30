@@ -266,20 +266,9 @@ show_link() {
     # 实际情况可能需要更复杂的解析，这里只做基本尝试
     local private_key=$(jq -r '.inbounds[0].streamSettings.realitySettings.privateKey' "$CONFIG_FILE")
     local sni=$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$CONFIG_FILE")
+    local short_id=$(jq -r '.inbounds[0].streamSettings.realitySettings.shortIds[1]' "$CONFIG_FILE")
     
     # 此时我们需要对应的公钥，但配置文件只存了私钥。
-    # X-ray 没有直接从私钥导出公钥的简单CLI工具供脚本快速调用（除非再运行一次x25519逻辑很麻烦）。
-    # *修正策略*: 为了显示链接，我们需要公钥。如果公钥丢失，链接将无效。
-    # 简单的做法是：我们无法轻易从私钥反推公钥用于显示，除非我们把公钥也存在某个地方或者不显示公钥。
-    # 但Reality必须要有公钥。
-    # 妥协方案：尝试从日志或者当初生成时保存的文件读取？不行，太乱。
-    # 更好方案：使用 xray x25519 -i "private_key" (如果支持) 或者提示用户无法恢复公钥。
-    # 查阅文档，`xray x25519` 生成是一次性的。
-    # 实际上，Reality的私钥生成对应公钥是确定性的，但Xray CLI好像没提供直接转换命令。
-    # 等等，如果只是为了查看配置，不重新生成，我们可能确实无法找回公钥。
-    # 为了解决这个问题，我们可以在生成配置时，把公钥作为注释写在json里，或者单独存一个文件。
-    # 这里我们采用单独存文件的方式 `/usr/local/etc/xray/public.key`。
-    
     local public_key=""
     if [[ -f "/usr/local/etc/xray/public.key" ]]; then
         public_key=$(cat /usr/local/etc/xray/public.key)
@@ -288,7 +277,7 @@ show_link() {
     fi
 
     local server_ip=$(curl -s4 ifconfig.me)
-    local link="vless://${uuid}@${server_ip}:${port}?security=reality&encryption=none&pbk=${public_key}&headerType=none&fp=chrome&type=tcp&flow=${flow}&sni=${sni}#Xray_Vision_Reality"
+    local link="vless://${uuid}@${server_ip}:${port}?security=reality&encryption=none&pbk=${public_key}&headerType=none&fp=chrome&type=tcp&flow=${flow}&sni=${sni}&sid=${short_id}#Xray_Vision_Reality"
 
     echo ""
     echo -e "${BLUE}================ 配置信息 =================${PLAIN}"
@@ -297,6 +286,7 @@ show_link() {
     echo -e "UUID: ${GREEN}${uuid}${PLAIN}"
     echo -e "SNI : ${GREEN}${sni}${PLAIN}"
     echo -e "PBK : ${GREEN}${public_key}${PLAIN}"
+    echo -e "ShortId: ${GREEN}${short_id}${PLAIN}"
     echo -e "${BLUE}================ 分享链接 =================${PLAIN}"
     echo -e "${YELLOW}${link}${PLAIN}"
     echo -e "${BLUE}===========================================${PLAIN}"
