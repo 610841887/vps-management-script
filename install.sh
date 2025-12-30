@@ -449,14 +449,28 @@ reinstall_system() {
     echo -e "  bash reinstall.sh centos 9"
     echo -e "  bash reinstall.sh windows 11"
     echo -e ""
-    echo -e "${BLUE}即将启动脚本... (运行后通常会显示帮助信息或需带参数运行)${PLAIN}"
-    read -p "按回车键运行脚本..."
-    ./reinstall.sh
     
-    echo -e "${YELLOW}脚本运行结束。如需重装，请手动执行上述命令。${PLAIN}"
-    rm -f reinstall.sh
-    read -p "按回车键返回菜单..."
-    show_menu
+    read -p "请输入完整重装命令 (直接回车返回菜单): " dd_cmd
+    
+    if [[ -z "$dd_cmd" ]]; then
+        rm -f reinstall.sh
+        show_menu
+        return
+    fi
+    
+    echo -e "${RED}警告: 即将执行以下命令，这将清除所有数据！${PLAIN}"
+    echo -e "${RED}命令: ${dd_cmd}${PLAIN}"
+    read -p "确认执行? [y/N]: " confirm_run
+    
+    if [[ "$confirm_run" == "y" || "$confirm_run" == "Y" ]]; then
+        echo -e "${YELLOW}正在执行...${PLAIN}"
+        eval "$dd_cmd"
+    else
+        echo -e "${YELLOW}已取消。${PLAIN}"
+        rm -f reinstall.sh
+        read -p "按回车键返回菜单..."
+        show_menu
+    fi
 }
 
 # X-ray 管理菜单
