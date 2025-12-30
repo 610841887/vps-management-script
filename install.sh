@@ -610,7 +610,7 @@ show_log() {
 # 脚本自我更新
 update_script() {
     echo -e "${YELLOW}正在检查脚本更新...${PLAIN}"
-    local download_url="https://raw.githubusercontent.com/610841887/vps-management-script/main/install_xray.sh"
+    local download_url="https://raw.githubusercontent.com/610841887/vps-management-script/main/install.sh"
     
     # 备份当前脚本
     cp "$0" "$0.bak"

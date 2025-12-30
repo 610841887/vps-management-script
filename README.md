@@ -20,7 +20,7 @@
 使用 Root 用户登录服务器，运行以下一键安装命令：
 
 ```bash
-wget -N --no-check-certificate https://raw.githubusercontent.com/610841887/vps-management-script/main/install_xray.sh && chmod +x install_xray.sh && ./install_xray.sh
+wget -N --no-check-certificate https://raw.githubusercontent.com/610841887/vps-management-script/main/install.sh && chmod +x install.sh && ./install.sh
 ```
 
 ## 系统要求
