@@ -25,6 +25,13 @@
 wget -N --no-check-certificate https://raw.githubusercontent.com/610841887/vps-management-script/main/install.sh && chmod +x install.sh && ./install.sh
 ```
 
+### 快捷管理
+脚本安装后会自动设置 `vps` 快捷指令。以后只需输入以下命令即可启动脚本：
+
+```bash
+vps
+```
+
 ## 系统要求
 
 - Linux VPS (Debian / Ubuntu / CentOS)

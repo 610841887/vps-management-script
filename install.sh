@@ -760,7 +760,54 @@ update_script() {
 
 
 
+# 基础依赖安装与快捷指令设置
+install_base() {
+    echo -e "${YELLOW}首次运行，正在进行基础初始化...${PLAIN}"
+    
+    # 安装基础工具
+    if [ -f /etc/debian_version ]; then
+        apt update -y
+        apt install -y curl wget git vim unzip tar
+    elif [ -f /etc/redhat-release ]; then
+        yum update -y
+        yum install -y curl wget git vim unzip tar
+        if ! command -v git &> /dev/null; then
+             yum install -y epel-release
+             yum install -y git
+        fi
+    else
+        echo -e "${RED}不支持的操作系统，脚本仅支持 Debian/Ubuntu/CentOS 系列。${PLAIN}"
+        exit 1
+    fi
+    
+    # 设置 vps 快捷指令
+    if [[ ! -f "/usr/local/bin/vps" ]]; then
+        echo -e "${YELLOW}正在设置 'vps' 快捷指令...${PLAIN}"
+        cp "$0" /usr/local/bin/vps
+        chmod +x /usr/local/bin/vps
+        echo -e "${GREEN}快捷指令设置成功！${PLAIN}"
+        echo -e "${GREEN}以后只需输入 'vps' 即可启动本脚本。${PLAIN}"
+        sleep 2
+    else
+        # 即使存在，如果是运行 install.sh 也更新一下 vps 文件，确保版本一致
+        if [[ "$(realpath "$0")" != "/usr/local/bin/vps" ]]; then
+            cp "$0" /usr/local/bin/vps
+            chmod +x /usr/local/bin/vps
+            echo -e "${GREEN}脚本版本已同步更新到 'vps' 命令。${PLAIN}"
+        fi
+    fi
+}
+
+
+
 # 入口
 check_root
+
+# 检查是否为 'vps' 命令启动，或者首次安装
+# 如果当前脚本路径不是 /usr/local/bin/vps，则执行安装流程
+if [[ "$(realpath "$0")" != "/usr/local/bin/vps" ]]; then
+    install_base
+fi
+
 # 如果有参数，可以做非交互模式，目前仅菜单与无参
 show_menu
