@@ -17,10 +17,9 @@ A comprehensive Bash script for one-click deployment and management of X-ray ser
 
 1.  Download the script:
     ```bash
-    wget -N --no-check-certificate https://raw.githubusercontent.com/yourusername/vps-management-script/main/install_xray.sh
+    wget -N --no-check-certificate https://raw.githubusercontent.com/610841887/vps-management-script/main/install_xray.sh
     chmod +x install_xray.sh
     ```
-    *(Replace URL with your actual repo URL)*
 
 2.  Run the script:
     ```bash
