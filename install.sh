@@ -418,6 +418,47 @@ EOF
     show_menu
 }
 
+# 系统重装
+reinstall_system() {
+    clear
+    echo -e "${RED}=====================================================${PLAIN}"
+    echo -e "${RED}                  警告 / WARNING                     ${PLAIN}"
+    echo -e "${RED}=====================================================${PLAIN}"
+    echo -e "${YELLOW}此功能将下载并运行系统重装脚本 (DD 脚本)。${PLAIN}"
+    echo -e "${YELLOW}脚本来源: https://github.com/bin456789/reinstall${PLAIN}"
+    echo -e "${RED}注意：${PLAIN}"
+    echo -e "${RED}1. 此操作将完全清空硬盘数据！${PLAIN}"
+    echo -e "${RED}2. 重装过程不可逆，可能导致失联，请谨慎操作！${PLAIN}"
+    echo -e "${RED}3. 通常用于更换系统版本 (如 CentOS -> Debian)。${PLAIN}"
+    echo -e "${RED}=====================================================${PLAIN}"
+    
+    read -p "确定要继续吗? (输入 'y' 继续，其他键取消): " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        show_menu
+        return
+    fi
+    
+    echo -e "${YELLOW}正在下载重装脚本...${PLAIN}"
+    wget -O reinstall.sh https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh || curl -O https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
+    chmod +x reinstall.sh
+    
+    echo -e "${GREEN}下载完成。${PLAIN}"
+    echo -e "${YELLOW}该脚本通常使用方式如下 (仅供参考):${PLAIN}"
+    echo -e "  bash reinstall.sh debian 12"
+    echo -e "  bash reinstall.sh ubuntu 22.04"
+    echo -e "  bash reinstall.sh centos 9"
+    echo -e "  bash reinstall.sh windows 11"
+    echo -e ""
+    echo -e "${BLUE}即将启动脚本... (运行后通常会显示帮助信息或需带参数运行)${PLAIN}"
+    read -p "按回车键运行脚本..."
+    ./reinstall.sh
+    
+    echo -e "${YELLOW}脚本运行结束。如需重装，请手动执行上述命令。${PLAIN}"
+    rm -f reinstall.sh
+    read -p "按回车键返回菜单..."
+    show_menu
+}
+
 # X-ray 管理菜单
 xray_menu() {
     clear
@@ -501,11 +542,12 @@ show_menu() {
     echo -e "  ${GREEN}3.${PLAIN} VPS 线路/性能测试 (NodeQuality)"
     echo -e "  ${GREEN}4.${PLAIN} 防火墙管理 (UFW)"
     echo -e "  ${GREEN}5.${PLAIN} Fail2Ban 防爆破保护 (SSH)"
-    echo -e "  ${GREEN}6.${PLAIN} 更新本脚本"
+    echo -e "  ${RED}6. 系统重装 (DD 脚本)${PLAIN}"
+    echo -e "  ${GREEN}7.${PLAIN} 更新本脚本"
     echo -e "  ${GREEN}0.${PLAIN} 退出脚本"
     echo -e "${BLUE}=============================================${PLAIN}"
     
-    read -p "请输入选项 [0-6]: " num
+    read -p "请输入选项 [0-7]: " num
     case "$num" in
         1)
             xray_menu
@@ -523,13 +565,16 @@ show_menu() {
             install_fail2ban
             ;;
         6)
+            reinstall_system
+            ;;
+        7)
             update_script
             ;;
         0)
             exit 0
             ;;
         *)
-            echo -e "${RED}请输入正确的数字 [0-6]${PLAIN}"
+            echo -e "${RED}请输入正确的数字 [0-7]${PLAIN}"
             sleep 1
             show_menu
             ;;

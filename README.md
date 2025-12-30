@@ -13,6 +13,7 @@
     - **性能优化**: 集成 `vps-tcp-tune` 脚本，一键优化系统参数与 BBR。
     - **线路测试**: 集成 `NodeQuality` 脚本，全面检测 VPS 线路与质量。
     - **安全防护**: 集成 `Fail2Ban`，一键配置 SSH 防爆破保护。
+    - **系统重装**: 集成 `reinstall.sh` DD 脚本，支持一键重装 Linux/Windows 系统。
     - **UFW 防火墙**: 集成防火墙管理，轻松放行/关闭端口。
 - **系统兼容**: 支持 Debian, Ubuntu, 和 CentOS 系统。
 
