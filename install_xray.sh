@@ -420,25 +420,10 @@ generate_config() {
       "protocol": "blackhole",
       "tag": "block"
     }
-  ],
-  "routing": {
-    "domainStrategy": "AsIs",
-    "rules": [
-      {
-        "type": "field",
-        "ip": ["geoip:private"],
-        "outboundTag": "block"
-      },
-      {
-        "type": "field",
-        "protocol": ["bittorrent"],
-        "outboundTag": "block"
-      }
-    ]
-  }
+  ]
 }
 EOF
-    echo -e "${GREEN}配置文件生成完毕 (已启用: 禁止局域网访问, 禁止 BitTorrent)。${PLAIN}"
+    echo -e "${GREEN}配置文件生成完毕。${PLAIN}"
 }
 
 # 开启 BBR
