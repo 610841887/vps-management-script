@@ -575,7 +575,7 @@ get_system_info() {
         os_info=$(uname -s)
     fi
     # 截断过长的OS名称
-    os_info="${os_info:0:28}"
+    os_info="${os_info:0:30}"
     
     kernel_info=$(uname -r)
     uptime_info=$(uptime -p | sed 's/up //')
@@ -649,13 +649,16 @@ get_system_info() {
     echo -e "${BLUE}================================================================${PLAIN}"
     echo -e "${BLUE}                   VPS 系统状态监控面板                         ${PLAIN}"
     echo -e "${BLUE}================================================================${PLAIN}"
-    printf " 系统信息: %-26s 内核版本: %-15s\n" "$os_info" "$kernel_info"
-    printf " 运行时间: %-26s TCP加速 : %-15s\n" "$uptime_info" "$bbr_info"
+    
+    # 调整列宽，确保 OS 名称显示完整且对齐
+    # 使用 %b 来正确解析包含转义字符的颜色代码
+    printf " 系统信息: %-32s 内核版本: %-15s\n" "$os_info" "$kernel_info"
+    printf " 运行时间: %-32s TCP加速 : %-15b\n" "$uptime_info" "$bbr_info"
     echo -e "${BLUE}----------------------------------------------------------------${PLAIN}"
-    printf " CPU 负载: %-26s 内存占用: %-15s\n" "$cpu_info" "$mem_info"
-    printf " 硬盘占用: %-26s 公网 IP : %-15s\n" "$disk_info" "$ip_info"
+    printf " CPU 负载: %-32s 内存占用: %-15s\n" "$cpu_info" "$mem_info"
+    printf " 硬盘占用: %-32s 公网 IP : %-15s\n" "$disk_info" "$ip_info"
     echo -e "${BLUE}----------------------------------------------------------------${PLAIN}"
-    printf " 入站流量: %-26s 出站流量: %-15s\n" "$rx_info" "$tx_info"
+    printf " 入站流量: %-32s 出站流量: %-15s\n" "$rx_info" "$tx_info"
     echo -e "${BLUE}================================================================${PLAIN}"
 }
 
