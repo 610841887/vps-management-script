@@ -564,12 +564,106 @@ xray_menu() {
     esac
 }
 
+# 获取系统信息
+get_system_info() {
+    # 1. 系统信息
+    if [ -f /etc/os-release ]; then
+        os_info=$(grep -E "^PRETTY_NAME=" /etc/os-release | cut -d'"' -f2)
+    elif [ -f /etc/redhat-release ]; then
+        os_info=$(cat /etc/redhat-release)
+    else
+        os_info=$(uname -s)
+    fi
+    # 截断过长的OS名称
+    os_info="${os_info:0:28}"
+    
+    kernel_info=$(uname -r)
+    uptime_info=$(uptime -p | sed 's/up //')
+    
+    # BBR 状态
+    bbr_status=$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null)
+    if [[ "$bbr_status" == "bbr" ]]; then
+        bbr_info="${GREEN}BBR (Enabled)${PLAIN}"
+    else
+        bbr_info="${RED}Disabled${PLAIN}"
+    fi
+
+    # 2. 资源监控
+    # CPU: 使用 top 简单抓取 wait/system/user，为了兼容性这里用 load avg 近似展示或者尝试抓取
+    # 考虑到 top 格式差异，使用 /proc/stat 算一下瞬间状态比较稳妥，但不sleep太久
+    # 简单方案: Load Avg
+    load_avg=$(cat /proc/loadavg | awk '{print $1" "$2" "$3}')
+    cpu_info="Load: $load_avg"
+    
+    # 内存
+    if command -v free >/dev/null 2>&1; then
+        mem_used=$(free -m | awk '/Mem:/ {print $3}')
+        mem_total=$(free -m | awk '/Mem:/ {print $2}')
+        mem_info="${mem_used}MB / ${mem_total}MB"
+    else
+        mem_info="N/A"
+    fi
+    
+    # 硬盘 (根目录)
+    disk_used=$(df -h / | awk '/\// {print $3}')
+    disk_total=$(df -h / | awk '/\// {print $2}')
+    disk_info="${disk_used} / ${disk_total}"
+    
+    # 3. 网络状态 (IP信息会有延迟，设置超时)
+    ip_info=$(curl -s4m 2 http://ip-api.com/json | jq -r '"\(.query) (\(.countryCode))" // "N/A"')
+    if [[ "$ip_info" == "N/A" ]]; then
+        ip_info=$(curl -s4m 2 ifconfig.me)
+        if [[ -z "$ip_info" ]]; then ip_info="Unknown"; fi
+    fi
+    
+    # 流量统计 (尝试获取主网卡流量)
+    # 简单获取第一块非lo网卡
+    interface=$(ip route | grep default | head -n1 | awk '{print $5}')
+    if [[ -z "$interface" ]]; then
+        interface=$(ls /sys/class/net | grep -v lo | head -n1)
+    fi
+    
+    if [[ ! -z "$interface" && -f "/sys/class/net/$interface/statistics/rx_bytes" ]]; then
+        rx_bytes=$(cat /sys/class/net/$interface/statistics/rx_bytes)
+        tx_bytes=$(cat /sys/class/net/$interface/statistics/tx_bytes)
+        
+        # 转换单位函数
+        format_size() {
+            local raw=$1
+            if [ $raw -ge 1073741824 ]; then
+                echo $(awk -v n=$raw 'BEGIN {printf "%.2f GB", n/1073741824}')
+            elif [ $raw -ge 1048576 ]; then
+                echo $(awk -v n=$raw 'BEGIN {printf "%.2f MB", n/1048576}')
+            else
+                echo $(awk -v n=$raw 'BEGIN {printf "%.2f KB", n/1024}')
+            fi
+        }
+        
+        rx_info=$(format_size $rx_bytes)
+        tx_info=$(format_size $tx_bytes)
+    else
+        rx_info="N/A"
+        tx_info="N/A"
+    fi
+    
+    echo -e "${BLUE}================================================================${PLAIN}"
+    echo -e "${BLUE}                   VPS 系统状态监控面板                         ${PLAIN}"
+    echo -e "${BLUE}================================================================${PLAIN}"
+    printf " 系统信息: %-26s 内核版本: %-15s\n" "$os_info" "$kernel_info"
+    printf " 运行时间: %-26s TCP加速 : %-15s\n" "$uptime_info" "$bbr_info"
+    echo -e "${BLUE}----------------------------------------------------------------${PLAIN}"
+    printf " CPU 负载: %-26s 内存占用: %-15s\n" "$cpu_info" "$mem_info"
+    printf " 硬盘占用: %-26s 公网 IP : %-15s\n" "$disk_info" "$ip_info"
+    echo -e "${BLUE}----------------------------------------------------------------${PLAIN}"
+    printf " 入站流量: %-26s 出站流量: %-15s\n" "$rx_info" "$tx_info"
+    echo -e "${BLUE}================================================================${PLAIN}"
+}
+
 # 主菜单
 show_menu() {
     clear
-    echo -e "${BLUE}=============================================${PLAIN}"
-    echo -e "${BLUE}           VPS 一键管理工具箱               ${PLAIN}"
-    echo -e "${BLUE}=============================================${PLAIN}"
+    get_system_info
+    
     echo -e "  ${GREEN}1.${PLAIN} X-ray 管理 (安装/更新/配置)"
     echo -e "  ${GREEN}2.${PLAIN} VPS 性能优化 (TCP BBR/系统优化)"
     echo -e "  ${GREEN}3.${PLAIN} VPS 线路/性能测试 (NodeQuality)"
@@ -579,7 +673,7 @@ show_menu() {
     echo -e "  ${GREEN}7.${PLAIN} 更新本脚本"
     echo -e "  ${RED}8. 卸载本脚本${PLAIN}"
     echo -e "  ${GREEN}0.${PLAIN} 退出脚本"
-    echo -e "${BLUE}=============================================${PLAIN}"
+    echo -e "${BLUE}================================================================${PLAIN}"
     
     read -p "请输入选项 [0-8]: " num
     case "$num" in
