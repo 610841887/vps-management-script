@@ -101,94 +101,7 @@ install_xray_core() {
     echo -e "${GREEN}X-ray 核心安装/更新完成。${PLAIN}"
 }
 
-# 生成新的配置
-generate_config() {
-    mkdir -p /usr/local/etc/xray
 
-    # 如果已存在配置文件，询问是否覆盖
-    if [[ -f "$CONFIG_FILE" ]]; then
-        echo -e "${RED}检测到已存在配置文件 config.json${PLAIN}"
-        read -p "是否覆盖重新生成? [y/N]: " overwrite
-        if [[ "$overwrite" != "y" && "$overwrite" != "Y" ]]; then
-            echo -e "${YELLOW}跳过配置生成。${PLAIN}"
-            return
-        fi
-    fi
-
-    local uuid=$(uuidgen)
-    echo -e "${YELLOW}正在生成 x25519 密钥对...${PLAIN}"
-    local key_pair=$(xray x25519)
-    local private_key=$(echo "$key_pair" | grep "Private" | awk '{print $3}')
-    
-    echo -e "${BLUE}请输入端口 [1-65535] (默认随机): ${PLAIN}"
-    read -p "" port
-    if [[ -z "$port" ]]; then
-        port=$((RANDOM + 10000))
-        [[ $port -gt 65535 ]] && port=$(($port - 10000))
-        echo -e "${YELLOW}使用随机端口: $port${PLAIN}"
-    fi
-
-    local sni_dest="www.microsoft.com:443"
-    local sni_server_names='["www.microsoft.com", "microsoft.com"]'
-    
-    echo -e "${BLUE}请输入伪装域名(SNI) (默认: www.microsoft.com): ${PLAIN}"
-    read -p "" input_sni
-    if [[ ! -z "$input_sni" ]]; then
-        sni_dest="${input_sni}:443"
-        sni_server_names="[\"${input_sni}\"]"
-    fi
-
-    cat > "$CONFIG_FILE" <<EOF
-{
-  "log": {
-    "loglevel": "warning"
-  },
-  "inbounds": [
-    {
-      "port": ${port},
-      "protocol": "vless",
-      "settings": {
-        "clients": [
-          {
-            "id": "${uuid}",
-            "flow": "xtls-rprx-vision"
-          }
-        ],
-        "decryption": "none"
-      },
-      "streamSettings": {
-        "network": "tcp",
-        "security": "reality",
-        "realitySettings": {
-          "show": false,
-          "dest": "${sni_dest}",
-          "xver": 0,
-          "serverNames": ${sni_server_names},
-          "privateKey": "${private_key}",
-          "shortIds": ["", "$(openssl rand -hex 4)"]
-        }
-      },
-      "sniffing": {
-        "enabled": true,
-        "destOverride": ["http", "tls", "quic"],
-        "routeOnly": true
-      }
-    }
-  ],
-  "outbounds": [
-    {
-      "protocol": "freedom",
-      "tag": "direct"
-    },
-    {
-      "protocol": "blackhole",
-      "tag": "block"
-    }
-  ]
-}
-EOF
-    echo -e "${GREEN}配置文件生成完毕。${PLAIN}"
-}
 
 # 配置 systemd
 setup_service() {
@@ -416,19 +329,137 @@ EOF
     echo -e "${GREEN}配置文件生成完毕。${PLAIN}"
 }
 
-# 开启 BBR
-enable_bbr() {
-    echo -e "${YELLOW}正在开启 TCP BBR...${PLAIN}"
-    if grep -q "net.core.default_qdisc=fq" /etc/sysctl.conf && grep -q "net.ipv4.tcp_congestion_control=bbr" /etc/sysctl.conf; then
-        echo -e "${GREEN}BBR 已经开启。${PLAIN}"
-        return
-    fi
-    echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
-    echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
-    sysctl -p
-    echo -e "${GREEN}BBR 开启成功。${PLAIN}"
+# 运行 VPS 性能优化脚本
+run_tcp_tune() {
+    echo -e "${YELLOW}正在下载并运行 TCP 优化脚本...${PLAIN}"
+    wget -O tcptune.sh https://raw.githubusercontent.com/Eric86777/vps-tcp-tune/main/tcptune.sh && chmod +x tcptune.sh && ./tcptune.sh
+    rm -f tcptune.sh
+    read -p "按回车键返回菜单..."
+    show_menu
 }
 
+# 运行 VPS 线路测试脚本
+run_node_quality() {
+    echo -e "${YELLOW}正在下载并运行 NodeQuality 测试脚本...${PLAIN}"
+    wget -N --no-check-certificate https://raw.githubusercontent.com/LloydAsp/NodeQuality/main/NodeQuality.sh && bash NodeQuality.sh
+    rm -f NodeQuality.sh
+    read -p "按回车键返回菜单..."
+    show_menu
+}
+
+# X-ray 管理菜单
+xray_menu() {
+    clear
+    echo -e "${BLUE}---------- X-ray 管理 ----------${PLAIN}"
+    echo -e "  ${GREEN}1.${PLAIN} 安装 X-ray (全新安装)"
+    echo -e "  ${GREEN}2.${PLAIN} 更新 X-ray 核心 (保留配置)"
+    echo -e "  ${GREEN}3.${PLAIN} 修改配置文件"
+    echo -e "  ${GREEN}4.${PLAIN} 查看配置链接"
+    echo -e "  ${GREEN}5.${PLAIN} 查看运行状态"
+    echo -e "  ${GREEN}6.${PLAIN} 查看实时日志"
+    echo -e "  ${RED}7. 卸载 X-ray${PLAIN}"
+    echo -e "  ${GREEN}0.${PLAIN} 返回主菜单"
+    echo -e "${BLUE}--------------------------------${PLAIN}"
+    
+    check_status
+    
+    read -p "请输入选项 [0-7]: " xnum
+    case "$xnum" in
+        1)
+            install_dependencies
+            install_xray_core
+            generate_config
+            setup_service
+            
+            # 询问配置防火墙
+            echo ""
+            read -p "是否配置防火墙 (UFW) 并放行相关端口? [y/N]: " ask_ufw
+            if [[ "$ask_ufw" == "y" || "$ask_ufw" == "Y" ]]; then
+                setup_firewall
+            fi
+            
+            show_link
+            read -p "按回车键继续..."
+            xray_menu
+            ;;
+        2)
+            install_xray_core
+            restart_service
+            read -p "按回车键继续..."
+            xray_menu
+            ;;
+        3)
+            edit_config
+            xray_menu
+            ;;
+        4)
+            show_link
+            read -p "按回车键继续..."
+            xray_menu
+            ;;
+        5)
+            check_status
+            read -p "按回车键继续..."
+            xray_menu
+            ;;
+        6)
+            show_log
+            ;;
+        7)
+            uninstall_xray
+            read -p "按回车键继续..."
+            xray_menu
+            ;;
+        0)
+            show_menu
+            ;;
+        *)
+            xray_menu
+            ;;
+    esac
+}
+
+# 主菜单
+show_menu() {
+    clear
+    echo -e "${BLUE}=============================================${PLAIN}"
+    echo -e "${BLUE}           VPS 一键管理工具箱               ${PLAIN}"
+    echo -e "${BLUE}=============================================${PLAIN}"
+    echo -e "  ${GREEN}1.${PLAIN} X-ray 管理 (安装/更新/配置)"
+    echo -e "  ${GREEN}2.${PLAIN} VPS 性能优化 (TCP BBR/系统优化)"
+    echo -e "  ${GREEN}3.${PLAIN} VPS 线路/性能测试 (NodeQuality)"
+    echo -e "  ${GREEN}4.${PLAIN} 防火墙管理 (UFW)"
+    echo -e "  ${GREEN}5.${PLAIN} 更新本脚本"
+    echo -e "  ${GREEN}0.${PLAIN} 退出脚本"
+    echo -e "${BLUE}=============================================${PLAIN}"
+    
+    read -p "请输入选项 [0-5]: " num
+    case "$num" in
+        1)
+            xray_menu
+            ;;
+        2)
+            run_tcp_tune
+            ;;
+        3)
+            run_node_quality
+            ;;
+        4)
+            firewall_menu
+            ;;
+        5)
+            update_script
+            ;;
+        0)
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}请输入正确的数字 [0-5]${PLAIN}"
+            sleep 1
+            show_menu
+            ;;
+    esac
+}
 # 防火墙配置
 setup_firewall() {
     if ! command -v ufw &> /dev/null; then
@@ -607,86 +638,7 @@ update_script() {
     exec "$0" "$@"
 }
 
-# 主菜单
-show_menu() {
-    clear
-    echo -e "${BLUE}=============================================${PLAIN}"
-    echo -e "${BLUE}       X-ray 一键管理脚本 (VLESS+Vision)     ${PLAIN}"
-    echo -e "${BLUE}=============================================${PLAIN}"
-    echo -e "  ${GREEN}1.${PLAIN} 安装 X-ray (全新安装)"
-    echo -e "  ${GREEN}2.${PLAIN} 更新 X-ray 核心 (保留配置)"
-    echo -e "  ${GREEN}3.${PLAIN} 修改配置文件"
-    echo -e "  ${GREEN}4.${PLAIN} 查看配置链接"
-    echo -e "  ${GREEN}5.${PLAIN} 查看运行状态"
-    echo -e "  ${GREEN}6.${PLAIN} 查看实时日志"
-    echo -e "  ${GREEN}7.${PLAIN} 开启 TCP BBR (系统优化)"
-    echo -e "  ${GREEN}8.${PLAIN} 防火墙管理 (UFW)"
-    echo -e "  ${GREEN}9.${PLAIN} 更新本脚本"
-    echo -e "  ${RED}10. 卸载 X-ray${PLAIN}"
-    echo -e "  ${GREEN}0.${PLAIN} 退出脚本"
-    echo -e "${BLUE}=============================================${PLAIN}"
-    
-    check_status
-    
-    read -p "请输入选项 [0-10]: " num
-    case "$num" in
-        1)
-            install_dependencies
-            install_xray_core
-            generate_config
-            setup_service
-            
-            # 询问配置防火墙
-            echo ""
-            read -p "是否配置防火墙 (UFW) 并放行相关端口? [y/N]: " ask_ufw
-            if [[ "$ask_ufw" == "y" || "$ask_ufw" == "Y" ]]; then
-                setup_firewall
-            fi
-            
-            show_link
-            ;;
-        2)
-            install_xray_core
-            restart_service
-            ;;
-        3)
-            edit_config
-            ;;
-        4)
-            show_link
-            ;;
-        5)
-            check_status
-            read -p "按回车键返回菜单..."
-            show_menu
-            ;;
-        6)
-            show_log
-            ;;
-        7)
-            enable_bbr
-            read -p "按回车键返回菜单..."
-            show_menu
-            ;;
-        8)
-            firewall_menu
-            ;;
-        9)
-            update_script
-            ;;
-        10)
-            uninstall_xray
-            ;;
-        0)
-            exit 0
-            ;;
-        *)
-            echo -e "${RED}请输入正确的数字 [0-10]${PLAIN}"
-            sleep 1
-            show_menu
-            ;;
-    esac
-}
+
 
 # 入口
 check_root
