@@ -5,6 +5,8 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;36m'
+PURPLE='\033[0;35m'
+SKYBLUE='\033[1;36m'
 PLAIN='\033[0m'
 
 # 配置文件路径
@@ -574,8 +576,10 @@ get_system_info() {
     else
         os_info=$(uname -s)
     fi
-    # 截断过长的OS名称
-    os_info="${os_info:0:30}"
+    # 优化 OS 名称显示: 去除 "GNU/Linux" 以节省空间
+    os_info=$(echo "$os_info" | sed 's/ GNU\/Linux//')
+    # 截断
+    os_info="${os_info:0:35}"
     
     kernel_info=$(uname -r)
     uptime_info=$(uptime -p | sed 's/up //')
@@ -589,11 +593,8 @@ get_system_info() {
     fi
 
     # 2. 资源监控
-    # CPU: 使用 top 简单抓取 wait/system/user，为了兼容性这里用 load avg 近似展示或者尝试抓取
-    # 考虑到 top 格式差异，使用 /proc/stat 算一下瞬间状态比较稳妥，但不sleep太久
-    # 简单方案: Load Avg
     load_avg=$(cat /proc/loadavg | awk '{print $1" "$2" "$3}')
-    cpu_info="Load: $load_avg"
+    cpu_info="$load_avg"
     
     # 内存
     if command -v free >/dev/null 2>&1; then
@@ -609,15 +610,14 @@ get_system_info() {
     disk_total=$(df -h / | awk '/\// {print $2}')
     disk_info="${disk_used} / ${disk_total}"
     
-    # 3. 网络状态 (IP信息会有延迟，设置超时)
-    ip_info=$(curl -s4m 2 http://ip-api.com/json | jq -r '"\(.query) (\(.countryCode))" // "N/A"')
+    # 3. 网络状态
+    ip_info=$(curl -s4m 1 http://ip-api.com/json | jq -r '"\(.query) (\(.countryCode))" // "N/A"')
     if [[ "$ip_info" == "N/A" ]]; then
-        ip_info=$(curl -s4m 2 ifconfig.me)
+        ip_info=$(curl -s4m 1 ifconfig.me)
         if [[ -z "$ip_info" ]]; then ip_info="Unknown"; fi
     fi
     
-    # 流量统计 (尝试获取主网卡流量)
-    # 简单获取第一块非lo网卡
+    # 流量统计
     interface=$(ip route | grep default | head -n1 | awk '{print $5}')
     if [[ -z "$interface" ]]; then
         interface=$(ls /sys/class/net | grep -v lo | head -n1)
@@ -627,7 +627,6 @@ get_system_info() {
         rx_bytes=$(cat /sys/class/net/$interface/statistics/rx_bytes)
         tx_bytes=$(cat /sys/class/net/$interface/statistics/tx_bytes)
         
-        # 转换单位函数
         format_size() {
             local raw=$1
             if [ $raw -ge 1073741824 ]; then
@@ -646,21 +645,43 @@ get_system_info() {
         tx_info="N/A"
     fi
     
-    echo -e "${BLUE}================================================================${PLAIN}"
-    echo -e "${BLUE}                   VPS 系统状态监控面板                         ${PLAIN}"
-    echo -e "${BLUE}================================================================${PLAIN}"
+    # 75 chars width
+    SEPARATOR="${PURPLE}===========================================================================${PLAIN}"
+    DIVIDER="${PURPLE}---------------------------------------------------------------------------${PLAIN}"
     
-    # 调整列宽，确保 OS 名称显示完整且对齐
-    # 使用 %b 来正确解析包含转义字符的颜色代码
-    printf " 系统信息: %-32s 内核版本: %-15s\n" "$os_info" "$kernel_info"
-    printf " 运行时间: %-32s TCP加速 : " "$uptime_info"
+    echo -e "${SEPARATOR}"
+    echo -e "                   ${SKYBLUE}VPS 系统状态监控面板 (System Dashboard)${PLAIN}"
+    echo -e "${SEPARATOR}"
+    
+    # 使用 %-12s 调整标签对齐，标签使用 SKYBLUE，值使用 YELLOW/GREEN
+    # Col 1: Label(12) + Val(36) | Col 2: Label(12) + Val(15)
+    
+    printf " %b%-12s%b %-36s %b%-12s%b %-15s\n" \
+        "$SKYBLUE" "系统信息:" "$PLAIN" "${YELLOW}${os_info}${PLAIN}" \
+        "$SKYBLUE" "内核版本:" "$PLAIN" "${YELLOW}${kernel_info}${PLAIN}"
+        
+    printf " %b%-12s%b %-36s %b%-12s%b " \
+        "$SKYBLUE" "运行时间:" "$PLAIN" "${YELLOW}${uptime_info}${PLAIN}" \
+        "$SKYBLUE" "TCP加速 :" "$PLAIN" 
     echo -e "$bbr_info"
-    echo -e "${BLUE}----------------------------------------------------------------${PLAIN}"
-    printf " CPU 负载: %-32s 内存占用: %-15s\n" "$cpu_info" "$mem_info"
-    printf " 硬盘占用: %-32s 公网 IP : %-15s\n" "$disk_info" "$ip_info"
-    echo -e "${BLUE}----------------------------------------------------------------${PLAIN}"
-    printf " 入站流量: %-32s 出站流量: %-15s\n" "$rx_info" "$tx_info"
-    echo -e "${BLUE}================================================================${PLAIN}"
+    
+    echo -e "${DIVIDER}"
+    
+    printf " %b%-12s%b %-36s %b%-12s%b %-15s\n" \
+        "$SKYBLUE" "CPU 负载:" "$PLAIN" "${GREEN}${cpu_info}${PLAIN}" \
+        "$SKYBLUE" "内存占用:" "$PLAIN" "${GREEN}${mem_info}${PLAIN}"
+        
+    printf " %b%-12s%b %-36s %b%-12s%b %-15s\n" \
+        "$SKYBLUE" "硬盘占用:" "$PLAIN" "${GREEN}${disk_info}${PLAIN}" \
+        "$SKYBLUE" "公网 IP :" "$PLAIN" "${GREEN}${ip_info}${PLAIN}"
+        
+    echo -e "${DIVIDER}"
+    
+    printf " %b%-12s%b %-36s %b%-12s%b %-15s\n" \
+        "$SKYBLUE" "入站流量:" "$PLAIN" "${YELLOW}${rx_info}${PLAIN}" \
+        "$SKYBLUE" "出站流量:" "$PLAIN" "${YELLOW}${tx_info}${PLAIN}"
+        
+    echo -e "${SEPARATOR}"
 }
 
 # 主菜单
