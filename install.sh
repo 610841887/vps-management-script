@@ -587,9 +587,11 @@ get_system_info() {
     # BBR 状态
     bbr_status=$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null)
     if [[ "$bbr_status" == "bbr" ]]; then
-        bbr_info="${GREEN}BBR (Enabled)${PLAIN}"
+        bbr_val="BBR (Enabled)"
+        bbr_color="${GREEN}"
     else
-        bbr_info="${RED}Disabled${PLAIN}"
+        bbr_val="Disabled"
+        bbr_color="${RED}"
     fi
 
     # 2. 资源监控
@@ -653,33 +655,37 @@ get_system_info() {
     echo -e "                   ${SKYBLUE}VPS 系统状态监控面板 (System Dashboard)${PLAIN}"
     echo -e "${SEPARATOR}"
     
-    # 使用 %-12s 调整标签对齐，标签使用 SKYBLUE，值使用 YELLOW/GREEN
-    # Col 1: Label(12) + Val(36) | Col 2: Label(12) + Val(15)
+    # 布局: Label(10) | Value(30) | Label(10) | Value(18)
+    # 使用 %b 解析颜色变量 (例如 \033[0;32m)，使用 %s 处理纯文本以保证对齐
     
-    printf " %b%-12s%b %-36s %b%-12s%b %-15s\n" \
-        "$SKYBLUE" "系统信息:" "$PLAIN" "${YELLOW}${os_info}${PLAIN}" \
-        "$SKYBLUE" "内核版本:" "$PLAIN" "${YELLOW}${kernel_info}${PLAIN}"
+    # Row 1: OS / Kernel
+    printf " %b%-10s%b %b%-30s%b %b%-10s%b %b%-18s%b\n" \
+        "$SKYBLUE" "系统信息:" "$PLAIN" "$YELLOW" "$os_info" "$PLAIN" \
+        "$SKYBLUE" "内核版本:" "$PLAIN" "$YELLOW" "$kernel_info" "$PLAIN"
         
-    printf " %b%-12s%b %-36s %b%-12s%b " \
-        "$SKYBLUE" "运行时间:" "$PLAIN" "${YELLOW}${uptime_info}${PLAIN}" \
-        "$SKYBLUE" "TCP加速 :" "$PLAIN" 
-    echo -e "$bbr_info"
+    # Row 2: Uptime / TCP
+    printf " %b%-10s%b %b%-30s%b %b%-10s%b %b%-18s%b\n" \
+        "$SKYBLUE" "运行时间:" "$PLAIN" "$YELLOW" "$uptime_info" "$PLAIN" \
+        "$SKYBLUE" "TCP加速 :" "$PLAIN" "$bbr_color" "$bbr_val" "$PLAIN"
     
     echo -e "${DIVIDER}"
     
-    printf " %b%-12s%b %-36s %b%-12s%b %-15s\n" \
-        "$SKYBLUE" "CPU 负载:" "$PLAIN" "${GREEN}${cpu_info}${PLAIN}" \
-        "$SKYBLUE" "内存占用:" "$PLAIN" "${GREEN}${mem_info}${PLAIN}"
+    # Row 3: CPU / Mem
+    printf " %b%-10s%b %b%-30s%b %b%-10s%b %b%-18s%b\n" \
+        "$SKYBLUE" "CPU 负载:" "$PLAIN" "$GREEN" "$cpu_info" "$PLAIN" \
+        "$SKYBLUE" "内存占用:" "$PLAIN" "$GREEN" "$mem_info" "$PLAIN"
         
-    printf " %b%-12s%b %-36s %b%-12s%b %-15s\n" \
-        "$SKYBLUE" "硬盘占用:" "$PLAIN" "${GREEN}${disk_info}${PLAIN}" \
-        "$SKYBLUE" "公网 IP :" "$PLAIN" "${GREEN}${ip_info}${PLAIN}"
+    # Row 4: Disk / IP
+    printf " %b%-10s%b %b%-30s%b %b%-10s%b %b%-18s%b\n" \
+        "$SKYBLUE" "硬盘占用:" "$PLAIN" "$GREEN" "$disk_info" "$PLAIN" \
+        "$SKYBLUE" "公网 IP :" "$PLAIN" "$GREEN" "$ip_info" "$PLAIN"
         
     echo -e "${DIVIDER}"
     
-    printf " %b%-12s%b %-36s %b%-12s%b %-15s\n" \
-        "$SKYBLUE" "入站流量:" "$PLAIN" "${YELLOW}${rx_info}${PLAIN}" \
-        "$SKYBLUE" "出站流量:" "$PLAIN" "${YELLOW}${tx_info}${PLAIN}"
+    # Row 5: Traffic
+    printf " %b%-10s%b %b%-30s%b %b%-10s%b %b%-18s%b\n" \
+        "$SKYBLUE" "入站流量:" "$PLAIN" "$YELLOW" "$rx_info" "$PLAIN" \
+        "$SKYBLUE" "出站流量:" "$PLAIN" "$YELLOW" "$tx_info" "$PLAIN"
         
     echo -e "${SEPARATOR}"
 }
