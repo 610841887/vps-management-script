@@ -1,4 +1,4 @@
-# VPS 管理脚本 (VPS Management Script)
+# VPS 一键管理脚本 (v1.2.0) (VPS Management Script)
 
 一个功能全面的 Bash 脚本，用于在 Linux VPS 上一键部署和管理 X-ray 服务。
 

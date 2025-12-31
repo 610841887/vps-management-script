@@ -9,6 +9,9 @@ PURPLE='\033[0;35m'
 SKYBLUE='\033[1;36m'
 PLAIN='\033[0m'
 
+# 脚本版本
+VERSION="v1.2.0"
+
 # 配置文件路径
 CONFIG_FILE="/usr/local/etc/xray/config.json"
 SERVICE_FILE="/etc/systemd/system/xray.service"
@@ -651,41 +654,56 @@ get_system_info() {
     SEPARATOR="${PURPLE}===========================================================================${PLAIN}"
     DIVIDER="${PURPLE}---------------------------------------------------------------------------${PLAIN}"
     
+    # 定义本地原生颜色变量，确保 printf 能够正确处理 (规避 %b 的兼容性问题)
+    local C_SKY=$(echo -e "${SKYBLUE}")
+    local C_YEL=$(echo -e "${YELLOW}")
+    local C_GRN=$(echo -e "${GREEN}")
+    local C_PLN=$(echo -e "${PLAIN}")
+    local C_RED=$(echo -e "${RED}")
+    
+    # 重新计算 BBR 颜色
+    local bbr_color_raw
+    if [[ "$bbr_status" == "bbr" ]]; then
+        bbr_color_raw="${C_GRN}"
+    else
+        bbr_color_raw="${C_RED}"
+    fi
+
     echo -e "${SEPARATOR}"
-    echo -e "                   ${SKYBLUE}VPS 系统状态监控面板 (System Dashboard)${PLAIN}"
+    echo -e "                   ${SKYBLUE}VPS 系统状态监控面板 (System Dashboard) ${VERSION}${PLAIN}"
     echo -e "${SEPARATOR}"
     
     # 布局: Label(10) | Value(30) | Label(10) | Value(18)
-    # 使用 %b 解析颜色变量 (例如 \033[0;32m)，使用 %s 处理纯文本以保证对齐
+    # 使用 %s 输出原生颜色代码，确保颜色被原样透传给终端，同时保证文本对齐
     
     # Row 1: OS / Kernel
-    printf " %b%-10s%b %b%-30s%b %b%-10s%b %b%-18s%b\n" \
-        "$SKYBLUE" "系统信息:" "$PLAIN" "$YELLOW" "$os_info" "$PLAIN" \
-        "$SKYBLUE" "内核版本:" "$PLAIN" "$YELLOW" "$kernel_info" "$PLAIN"
+    printf " %s%-10s%s %s%-30s%s %s%-10s%s %s%-18s%s\n" \
+        "$C_SKY" "系统信息:" "$C_PLN" "$C_YEL" "$os_info" "$C_PLN" \
+        "$C_SKY" "内核版本:" "$C_PLN" "$C_YEL" "$kernel_info" "$C_PLN"
         
     # Row 2: Uptime / TCP
-    printf " %b%-10s%b %b%-30s%b %b%-10s%b %b%-18s%b\n" \
-        "$SKYBLUE" "运行时间:" "$PLAIN" "$YELLOW" "$uptime_info" "$PLAIN" \
-        "$SKYBLUE" "TCP加速 :" "$PLAIN" "$bbr_color" "$bbr_val" "$PLAIN"
+    printf " %s%-10s%s %s%-30s%s %s%-10s%s %s%-18s%s\n" \
+        "$C_SKY" "运行时间:" "$C_PLN" "$C_YEL" "$uptime_info" "$C_PLN" \
+        "$C_SKY" "TCP加速 :" "$C_PLN" "$bbr_color_raw" "$bbr_val" "$C_PLN"
     
     echo -e "${DIVIDER}"
     
     # Row 3: CPU / Mem
-    printf " %b%-10s%b %b%-30s%b %b%-10s%b %b%-18s%b\n" \
-        "$SKYBLUE" "CPU 负载:" "$PLAIN" "$GREEN" "$cpu_info" "$PLAIN" \
-        "$SKYBLUE" "内存占用:" "$PLAIN" "$GREEN" "$mem_info" "$PLAIN"
+    printf " %s%-10s%s %s%-30s%s %s%-10s%s %s%-18s%s\n" \
+        "$C_SKY" "CPU 负载:" "$C_PLN" "$C_GRN" "$cpu_info" "$C_PLN" \
+        "$C_SKY" "内存占用:" "$C_PLN" "$C_GRN" "$mem_info" "$C_PLN"
         
     # Row 4: Disk / IP
-    printf " %b%-10s%b %b%-30s%b %b%-10s%b %b%-18s%b\n" \
-        "$SKYBLUE" "硬盘占用:" "$PLAIN" "$GREEN" "$disk_info" "$PLAIN" \
-        "$SKYBLUE" "公网 IP :" "$PLAIN" "$GREEN" "$ip_info" "$PLAIN"
+    printf " %s%-10s%s %s%-30s%s %s%-10s%s %s%-18s%s\n" \
+        "$C_SKY" "硬盘占用:" "$C_PLN" "$C_GRN" "$disk_info" "$C_PLN" \
+        "$C_SKY" "公网 IP :" "$C_PLN" "$C_GRN" "$ip_info" "$C_PLN"
         
     echo -e "${DIVIDER}"
     
     # Row 5: Traffic
-    printf " %b%-10s%b %b%-30s%b %b%-10s%b %b%-18s%b\n" \
-        "$SKYBLUE" "入站流量:" "$PLAIN" "$YELLOW" "$rx_info" "$PLAIN" \
-        "$SKYBLUE" "出站流量:" "$PLAIN" "$YELLOW" "$tx_info" "$PLAIN"
+    printf " %s%-10s%s %s%-30s%s %s%-10s%s %s%-18s%s\n" \
+        "$C_SKY" "入站流量:" "$C_PLN" "$C_YEL" "$rx_info" "$C_PLN" \
+        "$C_SKY" "出站流量:" "$C_PLN" "$C_YEL" "$tx_info" "$C_PLN"
         
     echo -e "${SEPARATOR}"
 }
