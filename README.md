@@ -42,3 +42,13 @@ vps
 ## 许可证
 
 MIT License
+
+## 致谢 (Credits)
+
+本脚本集成了以下优秀的开源项目，感谢开发者的无私奉献：
+
+- **TCP 优化**: [vps-tcp-tune](https://github.com/Eric86777/vps-tcp-tune) by @Eric86777
+- **线路测试**: [NodeQuality](https://github.com/LloydAsp/NodeQuality) by @LloydAsp
+- **系统重装**: [reinstall](https://github.com/bin456789/reinstall) by @bin456789
+- **核心组件**: [Xray-core](https://github.com/XTLS/Xray-core) by @XTLS
+
